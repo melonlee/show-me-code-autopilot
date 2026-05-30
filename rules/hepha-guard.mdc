@@ -1,82 +1,92 @@
 ---
-description: Guardrails for iterative hepha coding loops with mandatory check/review gates, bounded change scope, and safe commit policy.
+description: Hepha 自主迭代交付的硬约束：中文记录、检查/审查门禁、每轮 summary、最小提交和安全停止。
 alwaysApply: true
 ---
 
 # Hepha Guard
 
-This rule applies only when the user explicitly requests hepha, autopilot, autonomous loop, or iterative unattended execution.
+本规则仅在用户明确要求 hepha、autopilot、自主循环、无人值守迭代或小步持续提交时生效。
 
-## Loop Contract
+## 循环契约
 
-When hepha is active, enforce this sequence:
+Hepha 激活后必须按以下顺序执行：
 
-1. plan
-2. execute
-3. check
-4. review
-5. commit
+1. 计划
+2. 研究
+3. 执行
+4. 检查
+5. 审查
+6. 沉淀
+7. 提交
 
-Do not skip or reorder phases.
+不要跳过或调换阶段。普通低风险任务可在“研究”阶段记录“不需要额外研究”。
 
-## Scope Boundaries Per Loop
+## 中文记录
 
-- Target one smallest ready task only.
-- Prefer no more than 3 files changed in a loop.
-- If scope grows unexpectedly, stop and re-plan into smaller tasks.
-- Avoid touching unrelated modules.
+- 用户可读的任务、验收、进度、决策和 summary 默认使用中文。
+- 代码标识符、命令、路径、错误输出保持原文。
 
-## Mandatory Evidence
+## 每轮范围
 
-Before commit, evidence must exist for:
+- 每轮只处理一个最小 ready 任务。
+- 优先控制在少量相关文件内。
+- 如果范围变大，停止当前执行并重新拆分。
+- 不触碰无关模块。
 
-1. plan rationale
-2. check results
-3. review outcomes
+## 强制证据
 
-Record evidence in `.autopilot/progress.md`.
+提交前必须在 `.hepha/` 中留下证据：
 
-## Research Requirement
+1. 计划依据
+2. 检查结果
+3. 审查结果
+4. 每轮 summary：`.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md`
 
-For technical choices or uncertainty:
+## 研究要求
 
-- Perform live research using web/GitHub and official docs.
-- Compare at least two options.
-- Log decision and tradeoffs in `.autopilot/decision-log.md`.
+遇到技术选型、不确定实现、架构变更或高风险决策时：
 
-## Check Gate
+- 优先查项目内既有模式和官方资料。
+- 至少比较两个方案。
+- 在 `.hepha/decision-log.md` 记录证据、权衡和最终决定。
 
-If relevant checks fail:
+## 检查门禁
 
-- fix first
-- rerun checks
-- do not commit until checks pass
+相关检查失败时：
 
-## Review Gate
+- 先修复失败原因。
+- 重新运行检查。
+- 检查通过前不得提交。
 
-For UI or interaction-impacting changes:
+## 审查门禁
 
-- run browser-based validation (MCP browser and/or Playwright)
-- verify critical user path and visible outcomes
-- no commit without passing review
+UI 或交互变更必须做浏览器验证：
 
-## Commit Safety
+- 打开受影响页面或路由。
+- 执行关键用户路径。
+- 验证可见结果。
+- 将步骤和证据记录到 `.hepha/progress.md` 与本轮 summary。
 
-- One loop corresponds to one commit.
-- Use conventional commit format.
-- No empty commits.
-- Do not commit secrets or sensitive credentials.
+## 提交安全
 
-## Stop Conditions
+- 一个 loop 对应一个 commit。
+- 使用 conventional commit。
+- 不允许空提交。
+- 不提交密钥、token 或敏感凭据。
+- summary 未生成时不得提交。
 
-Stop hepha and report status if:
+## 停止条件
 
-1. same task fails twice consecutively
-2. unresolved blocker prevents ready tasks
-3. critical validation tooling is unavailable
+满足以下任一条件时停止 Hepha 并报告：
 
-Include:
+1. 同一任务连续失败两次。
+2. 没有 ready 任务且阻塞未解决。
+3. 必需验证工具不可用且没有可信替代方案。
+4. 继续执行会超过用户授权的风险边界。
 
-- blocker details
-- attempted actions
-- proposed next step
+报告必须包含：
+
+- 阻塞详情
+- 已尝试动作
+- 当前 `.hepha` 产物状态
+- 建议下一步

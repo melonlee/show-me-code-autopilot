@@ -1,51 +1,57 @@
-# Validation Quality Gates
+# 质量门禁
 
-## Gate A: Engineering Checks
+## Gate A：工程检查
 
-Run all relevant checks for touched scope:
+根据改动范围运行相关检查：
 
 - lint
-- unit/integration tests
-- build and type checks
+- 单元测试 / 集成测试
+- build / typecheck
 
-Pass criteria:
+通过标准：
 
-- no blocking errors
-- new/changed behavior covered by tests when feasible
+- 无阻塞错误。
+- 新增或变更行为在可行时有测试覆盖。
+- 无法测试时，在 summary 中说明原因和替代验证。
 
-## Gate B: Review Checklist
+## Gate B：代码审查
 
-Before commit, verify:
+提交前确认：
 
-1. Change matches selected task acceptance.
-2. No unrelated file edits.
-3. Edge cases considered.
-4. Naming and structure remain consistent.
+1. 改动匹配当前任务验收标准。
+2. 没有无关文件改动。
+3. 边界条件已考虑。
+4. 命名、结构和项目现有模式一致。
+5. 每轮 summary 已写入 `.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md`。
 
-## Gate C: Browser Validation (UI/interaction changes)
+## Gate C：浏览器验证
 
-Use browser tooling (MCP browser and/or Playwright):
+UI 或交互变更必须使用浏览器工具、MCP 或 Playwright：
 
-1. Open affected page/route.
-2. Execute critical user path.
-3. Verify expected visible result.
-4. Capture screenshot/snapshot when needed.
+1. 打开受影响页面或路由。
+2. 执行关键用户路径。
+3. 验证预期可见结果。
+4. 必要时记录截图、快照或控制台信息。
 
-Pass criteria:
+通过标准：
 
-- key interactions are successful
-- no obvious UI regression in affected path
+- 关键交互成功。
+- 受影响路径没有明显 UI 回归。
+- 验证步骤写入 `.hepha/progress.md` 和本轮 summary。
 
-## Commit Gate
+## 提交门禁
 
-Commit is allowed only when:
+只有满足以下条件才允许提交：
 
-- Gate A passed
-- Gate B passed
-- Gate C passed when applicable
+- Gate A 通过。
+- Gate B 通过。
+- Gate C 在适用时通过。
+- `.hepha` 运行产物已更新。
 
-Commit message format:
+提交信息格式：
 
-`type(scope): short purpose`
+```text
+type(scope): short purpose
+```
 
-Optional body should explain motivation and impact.
+提交正文可说明动机、影响和验证方式。

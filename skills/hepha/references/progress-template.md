@@ -1,192 +1,140 @@
-# Progress Visualization Guide
+# 进度可视化指南
 
-## Purpose
+## 用途
 
-This document explains the format rules and visualization elements for `.autopilot/progress.md`. For the actual template file, see `templates/progress.md.template`.
+本文件定义 `.hepha/progress.md` 的格式规则。实际模板见 `templates/progress.md`。
 
-## File Structure
+## 文件结构
 
-The progress.md file contains these sections:
+`progress.md` 包含：
 
-1. **Header** - Requirement info and timestamps
-2. **Progress Overview** - Visual progress bar and status summary
-3. **Loop History** - Detailed log of each execution loop
-4. **Risk Log** - Active risks and mitigations
-5. **Completion Summary** - Final summary when all tasks done
+1. **头部信息**：需求、时间、负责人
+2. **进度概览**：进度条、状态汇总、依赖图
+3. **循环历史**：每轮计划、执行、检查、审查、summary 路径
+4. **风险日志**：阻塞和缓解措施
+5. **完成总结**：需求完成后填写
 
----
+## 进度条格式
 
-## Progress Bar Format
-
-```
-Overall Progress: [████████░░] 80% (4/5 tasks complete)
-                  ↑ completed   ↑ remaining
+```text
+总体进度：[████████░░] 80% (4/5 个任务完成)
 ```
 
-**Rules**:
-- Use `█` for completed portion
-- Use `░` for remaining portion
-- Bar width: 10 characters total
-- Show percentage and count: `(X/Y tasks complete)`
+规则：
 
-**Examples**:
-```
-[░░░░░░░░░░] 0% (0/5 tasks complete)
-[███░░░░░░░░] 30% (1.5/5 tasks complete)
-[██████████] 100% (5/5 tasks complete)
-```
+- `█` 表示已完成部分。
+- `░` 表示剩余部分。
+- 总宽度 10 个字符。
+- 同时显示百分比和完成数。
 
----
+## 状态值
 
-## Status Icons
+| 中文状态 | state 值 |
+|----------|----------|
+| 已完成 | `done` |
+| 进行中 | `doing` |
+| 待执行 | `todo` |
+| 阻塞 | `blocked` |
+| 跳过 | `skipped` |
 
-| Icon | Meaning | State Value |
-|------|---------|-------------|
-| ✅ | Done | `done` |
-| 🔄 | In Progress | `doing` |
-| ⏳ | Todo | `todo` |
-| 🚫 | Blocked | `blocked` |
-| ⏭️ | Skipped | `skipped` |
-
----
-
-## Status Summary Table
+## 状态汇总表
 
 ```markdown
-Status Summary:
-| Status | Count | Tasks |
-|--------|-------|-------|
-| ✅ Done | 4 | TASK-001, TASK-002, TASK-004, TASK-005 |
-| 🔄 In Progress | 1 | TASK-003 |
-| ⏳ Todo | 0 | - |
-| 🚫 Blocked | 0 | - |
+状态汇总：
+
+| 状态 | 数量 | 任务 |
+|------|------|------|
+| 已完成 | 4 | TASK-001, TASK-002, TASK-004, TASK-005 |
+| 进行中 | 1 | TASK-003 |
+| 待执行 | 0 | - |
+| 阻塞 | 0 | - |
 ```
 
-**Rules**:
-- List actual task IDs for completed/in-progress tasks
-- Use `-` for empty categories
-- Update after each loop
+规则：
 
----
+- 列出真实任务 ID。
+- 空类别写 `-`。
+- 每轮结束后更新。
 
-## Dependency Graph Format
+## 依赖图格式
 
-Use ASCII art for simple dependency visualization:
+使用 ASCII 表达依赖：
 
-**Linear Chain**:
-```
-TASK-001 (✅) ──► TASK-002 (✅) ──► TASK-003 (🔄)
+```text
+TASK-001 (done) --> TASK-002 (done) --> TASK-003 (doing)
 ```
 
-**Branching**:
-```
-TASK-001 (✅) ──► TASK-002 (✅)
-     │
-     ├──────────────► TASK-003 (✅)
-     │
-     └──────────────► TASK-004 (⏳)
+分支示例：
+
+```text
+TASK-001 (done) --> TASK-002 (done)
+     |
+     +------------> TASK-003 (done)
+     |
+     +------------> TASK-004 (todo)
 ```
 
-**Converging**:
-```
-TASK-001 (✅) ──┐
-TASK-002 (✅) ──┼──► TASK-003 (🔄)
-TASK-003 (✅) ──┘
-```
+## 循环记录格式
 
-**Legend**:
-```
-  ──► : depends on
-  (✅) : Done
-  (🔄) : In Progress
-  (⏳) : Todo
-  (🚫) : Blocked
-```
-
----
-
-## Loop Entry Format
-
-Each loop entry should contain:
+每轮记录应包含：
 
 ```markdown
-### Loop #[N] - TASK-[XXX]: [Task title]
+### Loop #[N] - TASK-[XXX]：[任务标题]
 
-**Time**: [ISO timestamp]
-**State**: [✅ Completed | 🔄 In Progress | 🚫 Blocked]
-**Commit**: [hash if completed]
-**Retry Count**: [N if retrying]
+**时间**：[ISO 时间]
+**状态**：[已完成 | 进行中 | 阻塞]
+**负责人**：[person]
+**Commit**：[hash]
+**Summary**：`.hepha/summary/YYYY-MM-DD/person/TASK-XXX.md`
+**重试次数**：[N]
 
-**Plan**:
-- Selected task: TASK-[XXX]
-- Expected files: [list]
-- Expected checks: [list]
-- Expected browser validation: [description]
+**计划**
 
-**Execution**:
-- [What was done]
+- 选定任务：TASK-[XXX]
+- 预计文件：[列表]
+- 预计检查：[列表]
+- 预计浏览器验证：[说明]
 
-**Check Results**:
-- [Check name]: [result]
+**执行**
 
-**Review Results**:
-- [What was validated]
+- [本轮做了什么]
 
-**Files Changed**:
-- [file path] (new/modified/deleted)
+**检查结果**
 
-**Notes**:
-- [Any important notes or discoveries]
+- [命令]：[结果]
+
+**审查结果**
+
+- [验证内容和证据]
+
+**变更文件**
+
+- [file path]（新增/修改/删除）
 ```
 
----
+## 自动更新规则
 
-## Auto-Update Rules
+每轮结束后：
 
-### After each loop:
-1. Update progress bar percentage
-2. Update status summary table
-3. Refresh dependency graph with current states
-4. Add new loop entry
+1. 更新进度条。
+2. 更新状态汇总表。
+3. 刷新依赖图。
+4. 追加循环记录。
+5. 写入本轮 summary 路径。
 
-### When task completes:
-- Move task from 🔄 to ✅ in status summary
-- Update dependency graph
+任务完成时，将状态从 `doing` 改为 `done`；阻塞时改为 `blocked` 并写入风险日志。
 
-### When task starts:
-- Move task from ⏳ to 🔄 in status summary
-- Update dependency graph
-
-### When blocked:
-- Add to 🚫 count in status summary
-- Add entry to Risk Log
-
-### On completion:
-- Fill in Completion Summary section
-- Generate final statistics
-
----
-
-## Risk Log Format
+## 风险日志格式
 
 ```markdown
-## Risk Log
-
-| Date | Task | Risk | Mitigation | Status |
-|------|------|------|------------|--------|
-| 2025-02-15 | TASK-001 | JWT secret management | Use env variables | ✅ Resolved |
-| 2025-02-15 | TASK-003 | Email service reliability | Add retry logic | 🔄 In Progress |
+| 日期 | 任务 | 风险 | 缓解措施 | 状态 |
+|------|------|------|----------|------|
+| 2026-05-30 | TASK-001 | 外部服务不稳定 | 增加重试和降级 | 已缓解 |
 ```
 
-**Status Values**:
-- `🔄 In Progress` - Being actively worked on
-- `✅ Resolved` - No longer a risk
-- `🚫 Blocked` - Unresolved blocker
+## 相关文件
 
----
-
-## Related Files
-
-- **Template**: `templates/progress.md.template` - Copy this to create new progress.md
-- **Task Schema**: `references/planning_task-decomposition.md` - Task format reference
-- **Backlog**: `.autopilot/backlog.md` - Source of task state for progress updates
+- 模板：`templates/progress.md`
+- 任务 schema：`references/planning_task-decomposition.md`
+- backlog：`.hepha/backlog.md`
+- 每轮 summary：`.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md`

@@ -1,265 +1,298 @@
 ---
 name: hepha
-description: Runs autonomous iterative delivery loops for coding tasks using plan -> execute -> check -> review -> commit. Use when the user asks for hepha mode, autopilot loop execution, unattended small-step implementation, continuous self-planning, automated commits, tech-option research via web/GitHub, and browser-based validation with MCP or Playwright.
+description: 启动 Hepha 自主迭代交付模式。用于用户明确要求 hepha、autopilot、自主循环、小步提交、持续 plan -> research -> execute -> check -> review -> summary -> commit、技术选型研究、本地 Hepha summary 服务或 Claude Code 风格任务看板时。
 context: fork
 agent: Explore
 ---
 
 # Hepha
 
-## Purpose
+## 核心定位
 
-Run each requirement as multiple small, autonomous loops:
+Hepha 是一个中文优先的工程交付 skill。它把大需求拆成可验证、可提交、可复盘的小任务，并按固定循环推进：
 
-`plan -> execute -> check -> review -> commit`
+`计划 -> 研究 -> 执行 -> 检查 -> 审查 -> 沉淀 -> 提交`
 
-Keep looping with minimal user intervention until the backlog is done or a stop condition is hit.
+Superpowers 的关键启发是：skill 不只是提示词，而是强制执行的软件工程纪律。Hepha 保留这种纪律，但把重点放在中文协作、每轮任务沉淀、本地可视化 review 和连续交付。
 
-## Activation
+## 激活条件
 
-Activate only when the user explicitly asks for:
+仅当用户明确要求以下任一内容时启用：
 
-- hepha / autopilot / autonomous loop / unattended iteration
-- continuous plan-execute-check-review-commit flow
-- small-step commits until a larger requirement is completed
+- hepha / autopilot / 自主循环 / 无人值守迭代
+- 小步执行并持续提交，直到 backlog 完成
+- 使用 Hepha 的本地 summary 页面或任务看板
+- 对 UI/交互变更执行浏览器验证并沉淀证据
 
-If the user did not explicitly request hepha, do not force this mode.
+未明确要求 Hepha 时，不要强行套用本 skill。
 
-## Non-Negotiable Operating Rules
+## 语言规则
 
-1. One loop = one smallest shippable sub-task.
-2. No commit before both engineering checks and browser review pass.
-3. Every loop must update progress artifacts under `.autopilot/`.
-4. If blocked, re-plan automatically; ask user only when truly necessary.
-5. Prefer minimal diff and avoid unrelated files.
+- 与用户沟通、任务标题、验收条件、进度记录、summary 文件默认使用中文。
+- 代码标识符、命令、错误输出、第三方 API 名称保持项目原文。
+- 引用英文资料时，用中文总结结论；必要的链接和短引用保留原文。
 
-## Required Working Artifacts
+## 不可违反的规则
 
-Create and maintain these files in the project's `.autopilot/` directory:
+1. 一轮只处理一个最小可交付子任务。
+2. 没有明确验收条件，不进入执行。
+3. 涉及代码行为时，优先测试先行；无法测试时必须记录原因和替代验证。
+4. 检查和审查未通过，不提交。
+5. 每轮结束必须生成中文 summary Markdown。
+6. UI 或流程变更必须做浏览器/Playwright/MCP 验证，并记录证据。
+7. 只改当前任务需要的文件，避免顺手重构。
 
-- `.autopilot/backlog.md` - task graph and states (`todo`, `doing`, `blocked`, `done`)
-- `.autopilot/progress.md` - per-loop execution log and evidence
-- `.autopilot/decision-log.md` - research and technical decisions
+## 运行时目录
 
-**Templates**: Use the template files from `templates/` in this skill directory as starting points:
-- `templates/backlog.md.template`
-- `templates/progress.md.template`
-- `templates/decision-log.md.template`
+在当前项目根目录创建并维护 `.hepha/`：
 
-If working files do not exist, copy from templates or create them before the first loop.
+```text
+.hepha/
+├── backlog.md
+├── progress.md
+├── decision-log.md
+└── summary/
+    └── YYYY-MM-DD/
+        └── person-slug/
+            └── TASK-XXX.md
+```
 
-## Loop Protocol
+模板位于本 skill 的 `templates/`：
 
-Execute the following phases in order for each loop.
+- `templates/backlog.md`
+- `templates/progress.md`
+- `templates/decision-log.md`
+- `templates/task-summary.md`
 
-### 1) PLAN (Enhanced)
+如果运行时文件不存在，先按模板创建。
 
-Goal: pick exactly one ready sub-task from the backlog.
+## 人物目录规则
 
-Steps:
+每轮 summary 的目录必须是：
 
-**Step 0.5 - Schema Validation (execute every PLAN):**
+`.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md`
 
-Verify each task in backlog.md contains:
-- ✅ `id` (format: TASK-XXX or numeric)
-- ✅ `title` (action statement)
-- ✅ `state` (todo|doing|blocked|done)
-- ✅ `depends_on` (array, can be empty)
-- ✅ `acceptance` (testable pass conditions)
-- ✅ `risk` (low|medium|high)
-- ✅ `files_hint` (expected files, optional)
+`person` 的取值顺序：
 
-Missing fields → complete before continuing
-Circular dependencies → detect and report error
+1. 用户本轮明确指定的人物、操作者或 reviewer 名称
+2. 环境变量 `HEPHA_PERSON`
+3. `git config user.name`
+4. 当前系统用户名
+5. `unknown`
 
-**Step 0 - Auto-Decomposition (if backlog.md missing or empty):**
+将人物名转为 slug：小写、空格转 `-`、删除不适合作为路径的字符。日期使用本地日期 `YYYY-MM-DD`。
 
-1. Analyze original requirement to identify core functional modules
-2. Apply decomposition patterns (see `references/decomposition-patterns.md`):
-   - Vertical slicing: split by user value path (UI → API → Data)
-   - Risk-first: high-risk dependencies first
-   - Independence: each task testable and committable separately
-3. Generate task graph:
-   - Assign unique ID to each sub-task (TASK-001, TASK-002...)
-   - Identify dependencies (depends_on)
-   - Assess risk level (low/medium/high)
-   - Define acceptance criteria (acceptance)
-4. Output to `.autopilot/backlog.md`
+## 每轮 Summary 内容
 
-**Step 1 - Normalize and Build Task Graph:**
+每轮结束都写一个独立 Markdown，供人和 AI review。必须包含：
 
-1. Normalize current requirement into:
-   - Goal
-   - Definition of done
-   - Constraints
-   - Out of scope
-2. Build/refresh task graph:
-   - Decompose Epic -> Tasks
-   - For each task, define input/output, acceptance, dependencies, risk
-3. Select one task from ready queue (all dependencies done).
-4. Write loop plan into `.autopilot/progress.md`:
-   - selected task
-   - expected files
-   - expected checks
-   - expected browser validation path
-   - Update progress visualization section
+- YAML frontmatter：task_id、title、date、person、state、risk、commit
+- 任务目标和验收标准
+- 本轮执行摘要
+- 修改文件
+- 检查命令与结果
+- 浏览器/人工审查结果
+- 技术决策和资料链接
+- 风险、阻塞和后续建议
+- AI reviewer 快速判断区
 
-### 2) RESEARCH (explicit trigger conditions)
+完成 summary 后，同步更新 `.hepha/progress.md` 的循环历史。
 
-Goal: make informed decisions with live evidence.
+## 本地 Hepha 服务
 
-**Decision Matrix - Research Required?**
+安装 skill 后，可在任意项目根目录运行：
 
-| Scenario Category | Specific Situation | Research Required |
-|------------------|-------------------|-------------------|
-| New Technology | Using library/framework not in project | ✅ Yes |
-| Architecture Change | Affects module boundaries or data flow | ✅ Yes |
-| Implementation Uncertainty | 2+ viable options with >30% difference | ✅ Yes |
-| Tool Selection | MCP/Playwright/Puppeteer/etc. choice | ✅ Yes |
-| CRUD Operations | Standard CRUD | ❌ No |
-| Bug Fixes | Clear error fix | ❌ No |
-| Style Adjustments | CSS/style class modifications | ❌ No |
+```bash
+node ~/.claude/skills/hepha/scripts/hepha-server.js --root . --port 3000
+```
 
-**Research Quality Requirements:**
+如果 skill 安装在其他位置，从对应 skill 目录运行：
 
-1. Compare at least 2 options
-2. Prefer official documentation and source code
-3. Record: option summary → evidence links → tradeoffs → decision rationale
+```bash
+node /path/to/hepha/scripts/hepha-server.js --root /path/to/project --port 3000
+```
 
-Record in `.autopilot/decision-log.md`:
+打开 `http://localhost:3000` 查看 `.hepha/summary` 下的日期、人物、任务列表和具体 Markdown 内容。页面使用 Claude Code 风格的深色背景、暖色强调和紧凑信息布局。
 
-- option A / B summary
-- evidence links or source notes
-- tradeoffs
-- final decision and rationale
+## 循环协议
 
-### 3) EXECUTE
+### 0. 准备
 
-Goal: implement the chosen sub-task with minimal blast radius.
+1. 确认 `.hepha/` 目录和模板文件存在。
+2. 若 backlog 为空，从用户需求生成任务图。
+3. 若本轮需要本地页面，提示或启动 `hepha-server.js`。
 
-Rules:
+### 1. 计划
 
-- Keep changes focused on required files only.
-- Avoid speculative refactors.
-- Keep functions small and reusable.
-- Add concise comments only where logic is non-obvious.
+目标：选择一个 ready 任务。
 
-### 4) CHECK
+每个任务必须包含：
 
-Goal: verify engineering quality.
+- `id`：`TASK-XXX`
+- `title`：中文动作句
+- `state`：`todo | doing | blocked | done`
+- `depends_on`：依赖任务数组，可为空
+- `acceptance`：可测试验收条件
+- `risk`：`low | medium | high`
+- `files_hint`：预计影响文件
 
-Run all relevant project checks (examples):
+计划阶段要检查：
+
+- ID 唯一
+- 依赖存在且无环
+- 至少有一个 ready 任务
+- 验收条件可验证
+
+优先级：
+
+1. 高风险前置任务
+2. 会解锁其他任务的基础任务
+3. 能尽早产生用户可见价值的任务
+
+### 2. 研究
+
+仅在以下情况强制研究：
+
+- 引入项目中没有的新库、框架或工具
+- 改变模块边界、数据流或部署方式
+- 存在两个以上可行方案且差异明显
+- 涉及安全、鉴权、支付、数据迁移等高风险决策
+
+研究要求：
+
+1. 至少比较两个方案。
+2. 优先官方文档、源码、项目内既有模式。
+3. 在 `.hepha/decision-log.md` 记录：背景、选项、证据、取舍、决定。
+
+普通 CRUD、明确 bug 修复、样式微调不需要额外研究。
+
+### 3. 执行
+
+目标：以最小影响范围完成选定任务。
+
+- 遵循项目现有架构和代码风格。
+- 不做无关重构。
+- 任务变大时立即拆分，不硬做。
+- 写必要测试；若不写测试，必须在 summary 里说明原因。
+
+### 4. 检查
+
+运行与改动相关的检查，例如：
 
 - lint
-- tests
+- unit/integration tests
 - build/typecheck
 
-If any check fails:
+失败时：
 
-1. Capture failure details in `.autopilot/progress.md`.
-2. Fix the root cause.
-3. Re-run checks.
-4. Repeat until pass or retry limit is reached.
+1. 将失败命令和关键信息写入 `.hepha/progress.md`。
+2. 修根因。
+3. 重新运行检查。
+4. 同一任务连续失败两次，触发重新规划或停止。
 
-### 5) REVIEW (browser and UX evidence required for UI/flow changes)
+### 5. 审查
 
-Goal: verify behavior from a user perspective, not only compile success.
+目标：确认结果符合用户视角和工程质量。
 
-For UI/interaction changes, use MCP browser tools and/or Playwright to validate:
+必须审查：
 
-- page load success
-- key interaction path works
-- expected text/element state is visible
-- major regressions are absent
+- 是否满足选定任务的验收条件
+- 是否存在无关改动
+- 是否破坏既有路径
+- UI/交互变更是否通过浏览器验证
 
-Attach review evidence to `.autopilot/progress.md`:
+UI/流程变更的证据包括：
 
-- interaction steps
-- observed result
-- screenshots/snapshots when relevant
+- 访问的页面或路由
+- 执行的关键交互
+- 观察到的结果
+- 截图、快照或控制台信息（如适用）
 
-### 6) COMMIT
+### 6. 沉淀
 
-Commit only when:
+在 `.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md` 写入本轮 summary。
 
-- checks passed
-- review passed
-- acceptance criteria for selected task are met
+同时更新：
 
-Commit policy:
+- `.hepha/progress.md`
+- `.hepha/backlog.md`
+- `.hepha/decision-log.md`（如本轮有研究或架构判断）
 
-- one loop, one commit
-- conventional commit format
-- message explains purpose/why, not only what
+summary 是下一轮、人类 review、本地页面和 AI review 的共同输入。
 
-Update task status in `.autopilot/backlog.md` to `done` and append commit hash in progress log.
+### 7. 提交
 
-## Re-Planning Policy
+提交条件：
 
-Trigger re-plan when:
+- 检查通过
+- 审查通过
+- 验收条件满足
+- summary 已生成
 
-- dependency changed
-- repeated failures suggest wrong approach
-- discovered scope mismatch
+提交规则：
 
-Re-plan behavior:
+- 一个 loop 对应一个最小提交。
+- 使用 conventional commit。
+- 提交信息说明目的，不只描述改了什么。
+- 不提交密钥或敏感凭据。
 
-1. Split the current task into smaller tasks.
-2. Mark blocked tasks explicitly with reason.
-3. Continue from next ready task.
+## 重新规划
 
-## Stop Conditions
+出现以下情况时重新规划：
 
-Stop loop and report clearly if any condition is met:
+- 发现隐藏依赖
+- 当前任务超过一轮合理范围
+- 检查/审查连续失败
+- 用户需求与当前任务图不一致
 
-1. No ready task and unresolved blockers remain.
-2. Same task fails checks/review 2 consecutive loops.
-3. Required tooling is unavailable (critical checks cannot run).
-4. User-defined risk boundary is exceeded.
+处理方式：
 
-When stopped, provide:
+1. 将当前任务标记为 `blocked` 或拆成更小任务。
+2. 记录阻塞原因。
+3. 更新依赖关系。
+4. 继续下一个 ready 任务。
 
-- current status
-- blocker root cause
-- proposed next actions
+## 停止条件
 
-## Completion Conditions
+满足任一条件时停止并报告：
 
-Consider a large requirement complete only when:
+1. 没有 ready 任务且存在未解决阻塞。
+2. 同一任务连续两次检查或审查失败。
+3. 必需工具不可用，且无法替代验证。
+4. 继续执行会越过用户给定风险边界。
 
-1. All backlog tasks are `done`.
-2. Requirement-level definition of done is satisfied.
-3. Relevant checks pass on final state.
-4. Required review evidence is present.
+报告必须包含：
 
-Then generate a final completion summary:
+- 当前完成状态
+- 阻塞根因
+- 已尝试动作
+- 建议下一步
 
-- completed task list
-- key decisions
-- risk notes
-- follow-up suggestions
+## 完成条件
 
-## Communication Style During Hepha
+只有同时满足以下条件，才认为大需求完成：
 
-- Keep user updates brief and frequent.
-- Do not ask for confirmation every loop.
-- Ask user only for true ambiguity, policy conflicts, or missing credentials.
+1. backlog 全部任务为 `done` 或明确跳过并说明原因。
+2. 需求级 definition of done 满足。
+3. 最终相关检查通过。
+4. summary 和审查证据完整。
+5. 本地 Hepha 页面能展示本次任务沉淀。
 
-## Suggested Starter Prompt For Users
+## 推荐启动提示
 
-Use this starter format to begin a run:
+```text
+启用 hepha 模式。
+请使用中文记录所有任务、验收、进度和 summary。
+运行循环：计划 -> 研究 -> 执行 -> 检查 -> 审查 -> 沉淀 -> 提交。
+每轮在 .hepha/summary/YYYY-MM-DD/<person>/ 下生成 TASK-XXX.md。
+如涉及 UI，请做浏览器验证。
+持续直到 backlog 完成或触发停止条件。
+需求：<粘贴需求>
+```
 
-1. Enable hepha mode.
-2. Run loop: plan -> execute -> check -> review -> commit.
-3. Perform web/GitHub research before technical choices.
-4. For UI flows, perform browser-based validation.
-5. Continue until backlog is complete or stop condition is met.
-6. Requirement/backlog: <paste requirement here>.
+## 参考资料
 
-## Additional References
-
-- Planning details: `references/planning_task-decomposition.md`
-- Quality gates: `references/validation_quality-gates.md`
-- Decomposition patterns: `references/decomposition-patterns.md`
-- Progress template: `references/progress-template.md`
-- Working file templates: `templates/backlog.md.template`, `templates/progress.md.template`, `templates/decision-log.md.template`
+- 任务拆解：`references/planning_task-decomposition.md`
+- 拆解模式：`references/decomposition-patterns.md`
+- 质量门禁：`references/validation_quality-gates.md`
+- 进度格式：`references/progress-template.md`

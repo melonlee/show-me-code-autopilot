@@ -1,341 +1,341 @@
-# Decomposition Patterns
+# 拆解模式
 
-## Purpose
+## 用途
 
-This document defines common task decomposition patterns for auto-breaking down requirements into executable tasks.
+本文件定义 Hepha 将大需求拆成可执行任务时使用的常见模式。
 
-## Decomposition Strategies
+## 拆解策略
 
-### 1. Vertical Slicing (Preferred)
+### 1. 垂直切片（优先）
 
-Split tasks by user value path from UI to data:
+按用户价值路径拆分，从 UI 到 API 再到数据：
 
-```
-User Request: "Add user profile feature"
-→ TASK-001: Create profile database schema
-→ TASK-002: Implement profile API endpoints
-→ TASK-003: Build profile UI components
-→ TASK-004: Connect UI to API with state management
-```
-
-**When to use:**
-- Feature with clear user-facing components
-- When early user validation is valuable
-- When UI and API can be developed incrementally
-
-### 2. Risk-First Decomposition
-
-Prioritize high-risk and high-uncertainty tasks:
-
-```
-User Request: "Implement OAuth authentication"
-→ TASK-001: Research and select OAuth provider (HIGH RISK)
-→ TASK-002: Set up OAuth callback infrastructure (HIGH RISK)
-→ TASK-003: Implement token storage and refresh
-→ TASK-004: Build login/logout UI
+```text
+用户需求："新增用户资料功能"
+-> TASK-001：创建资料数据模型
+-> TASK-002：实现资料 API
+-> TASK-003：构建资料页面组件
+-> TASK-004：连接 UI、API 和状态管理
 ```
 
-**When to use:**
-- Integrating new technologies
-- Unknown technical feasibility
-- External dependencies
+适用场景：
 
-### 3. Independent Feature Decomposition
+- 功能有明确用户路径。
+- 需要尽早做用户视角验证。
+- UI 和 API 可以逐步接通。
 
-Split into independently testable and committable units:
+### 2. 风险优先
 
-```
-User Request: "Add comment system"
-→ TASK-001: Create comment data model
-→ TASK-002: Implement CRUD API for comments
-→ TASK-003: Add comment list component
-→ TASK-004: Add comment form component
-→ TASK-005: Implement comment notifications
-```
+优先处理高风险、高不确定性的任务：
 
-**When to use:**
-- Features with multiple sub-features
-- When incremental delivery is acceptable
-- Each sub-feature can be tested independently
-
-### 4. Dependency Chain Decomposition
-
-Identify and sequence by explicit dependencies:
-
-```
-User Request: "Add file upload feature"
-→ TASK-001: Set up file storage backend (no dependencies)
-→ TASK-002: Implement upload API endpoint (depends on TASK-001)
-→ TASK-003: Create upload UI component (depends on TASK-002)
-→ TASK-004: Add progress tracking (depends on TASK-002)
-→ TASK-005: Implement file listing/deletion (depends on TASK-002)
+```text
+用户需求："实现 OAuth 登录"
+-> TASK-001：研究并选择 OAuth 方案（高风险）
+-> TASK-002：搭建 OAuth callback 流程（高风险）
+-> TASK-003：实现 token 存储和刷新
+-> TASK-004：实现登录/退出 UI
 ```
 
-**When to use:**
-- Clear technical dependencies exist
-- Infrastructure must precede features
-- Data flow is unidirectional
+适用场景：
 
-## Common Pattern Templates
+- 引入新技术或外部依赖。
+- 技术可行性未知。
+- 后续任务依赖某个关键判断。
 
-### CRUD Feature Template
+### 3. 独立能力拆解
+
+拆成可独立测试、独立提交的功能单元：
+
+```text
+用户需求："新增评论系统"
+-> TASK-001：创建评论数据模型
+-> TASK-002：实现评论 CRUD API
+-> TASK-003：实现评论列表组件
+-> TASK-004：实现评论表单组件
+-> TASK-005：实现评论通知
+```
+
+适用场景：
+
+- 一个需求包含多个子能力。
+- 可以接受增量交付。
+- 每个子能力都能单独验证。
+
+### 4. 依赖链拆解
+
+按真实技术依赖排序：
+
+```text
+用户需求："新增文件上传功能"
+-> TASK-001：设置文件存储后端（无依赖）
+-> TASK-002：实现上传 API（依赖 TASK-001）
+-> TASK-003：创建上传 UI（依赖 TASK-002）
+-> TASK-004：增加上传进度（依赖 TASK-002）
+-> TASK-005：实现文件列表和删除（依赖 TASK-002）
+```
+
+适用场景：
+
+- 技术依赖非常清晰。
+- 基础设施必须先于业务能力。
+- 数据流是单向的。
+
+## 常见模板
+
+### CRUD 功能
 
 ```yaml
-# For creating a new CRUD resource (e.g., "Product", "Article")
 tasks:
   - id: TASK-001
-    title: "Create [Resource] data model and migration"
+    title: "创建 [资源] 数据模型和迁移"
     state: todo
     depends_on: []
     acceptance:
-      - "Database table for [Resource] exists"
-      - "Migration script runs successfully"
+      - "[资源] 数据表已创建"
+      - "迁移脚本可成功运行"
     risk: low
     files_hint: ["db/migrations/*", "src/models/[Resource].ts"]
 
   - id: TASK-002
-    title: "Implement [Resource] CRUD API endpoints"
+    title: "实现 [资源] CRUD API"
     state: todo
     depends_on: [TASK-001]
     acceptance:
-      - "GET /api/[resource] returns list"
-      - "GET /api/[resource]/:id returns single item"
-      - "POST /api/[resource] creates item"
-      - "PUT /api/[resource]/:id updates item"
-      - "DELETE /api/[resource]/:id deletes item"
+      - "GET /api/[resource] 返回列表"
+      - "GET /api/[resource]/:id 返回单条记录"
+      - "POST /api/[resource] 可创建记录"
+      - "PUT /api/[resource]/:id 可更新记录"
+      - "DELETE /api/[resource]/:id 可删除记录"
     risk: medium
     files_hint: ["src/api/[Resource].ts"]
 
   - id: TASK-003
-    title: "Build [Resource] list UI component"
+    title: "构建 [资源] 列表 UI"
     state: todo
     depends_on: [TASK-002]
     acceptance:
-      - "List renders with pagination"
-      - "Each item displays key fields"
-      - "Loading states handled"
+      - "列表可渲染并支持分页"
+      - "每条记录展示关键字段"
+      - "加载态可正确显示"
     risk: low
     files_hint: ["src/components/[Resource]List.tsx"]
 
   - id: TASK-004
-    title: "Build [Resource] form UI component"
+    title: "构建 [资源] 表单 UI"
     state: todo
     depends_on: [TASK-002]
     acceptance:
-      - "Form validates required fields"
-      - "Submit creates/updates via API"
-      - "Error messages displayed on failure"
+      - "表单校验必填字段"
+      - "提交时调用创建或更新 API"
+      - "失败时展示错误信息"
     risk: low
     files_hint: ["src/components/[Resource]Form.tsx"]
 ```
 
-### Authentication Feature Template
+### 鉴权功能
 
 ```yaml
-# For adding authentication/authorization
 tasks:
   - id: TASK-001
-    title: "Research authentication strategy"
+    title: "研究鉴权方案"
     state: todo
     depends_on: []
     acceptance:
-      - "Document compared 2+ auth options"
-      - - "Decision recorded with rationale"
+      - "比较至少两个鉴权方案"
+      - "在 .hepha/decision-log.md 记录选择理由"
     risk: high
-    files_hint: [".autopilot/decision-log.md"]
+    files_hint: [".hepha/decision-log.md"]
 
   - id: TASK-002
-    title: "Implement authentication backend"
+    title: "实现鉴权后端"
     state: todo
     depends_on: [TASK-001]
     acceptance:
-      - "User registration endpoint works"
-      - "Login endpoint returns valid token"
-      - "Token verification middleware exists"
+      - "用户注册接口可用"
+      - "登录接口返回有效 token"
+      - "存在 token 校验中间件"
     risk: high
     files_hint: ["src/api/auth.ts", "src/middleware/auth.ts"]
 
   - id: TASK-003
-    title: "Build authentication UI"
+    title: "构建鉴权 UI"
     state: todo
     depends_on: [TASK-002]
     acceptance:
-      - "Login/register forms exist"
-      - "Token stored on successful auth"
-      - "Protected routes redirect to login"
+      - "登录和注册表单存在"
+      - "认证成功后保存 token"
+      - "受保护页面会跳转到登录"
     risk: medium
     files_hint: ["src/components/LoginForm.tsx", "src/components/RegisterForm.tsx"]
 
   - id: TASK-004
-    title: "Add session management"
+    title: "增加会话管理"
     state: todo
     depends_on: [TASK-003]
     acceptance:
-      - "Token refresh implemented"
-      - "Logout clears session"
-      - "Expired tokens handled gracefully"
+      - "实现 token 刷新"
+      - "退出登录会清理会话"
+      - "token 过期时有友好处理"
     risk: medium
     files_hint: ["src/utils/auth.ts"]
 ```
 
-### UI Component Template
+### UI 组件
 
 ```yaml
-# For adding a new UI component
 tasks:
   - id: TASK-001
-    title: "Design [Component] API and props interface"
+    title: "定义 [组件] API 和 props"
     state: todo
     depends_on: []
     acceptance:
-      - "Props interface documented"
-      - "Component contract defined"
+      - "props 接口已定义"
+      - "组件契约清晰"
     risk: low
     files_hint: ["src/components/[Component].tsx"]
 
   - id: TASK-002
-    title: "Implement [Component] base functionality"
+    title: "实现 [组件] 基础功能"
     state: todo
     depends_on: [TASK-001]
     acceptance:
-      - "Component renders with required props"
-      - "Basic interaction works"
-      - "Accessibility attributes present"
+      - "组件可使用必需 props 渲染"
+      - "基础交互可用"
+      - "包含必要可访问性属性"
     risk: low
     files_hint: ["src/components/[Component].tsx"]
 
   - id: TASK-003
-    title: "Add [Component] styling and variants"
+    title: "增加 [组件] 样式和变体"
     state: todo
     depends_on: [TASK-002]
     acceptance:
-      - "All visual variants render correctly"
-      - "Responsive behavior verified"
-      - "Dark mode support if applicable"
+      - "所有视觉变体正确渲染"
+      - "响应式表现已验证"
+      - "如项目支持深色模式，组件也支持"
     risk: low
     files_hint: ["src/components/[Component].tsx", "src/components/[Component].css"]
 
   - id: TASK-004
-    title: "Write unit tests for [Component]"
+    title: "为 [组件] 编写测试"
     state: todo
     depends_on: [TASK-003]
     acceptance:
-      - "All props combinations tested"
-      - "Interaction events verified"
-      - "Edge cases covered"
+      - "关键 props 组合已覆盖"
+      - "交互事件已验证"
+      - "边界情况已覆盖"
     risk: low
     files_hint: ["src/components/[Component].test.tsx"]
 ```
 
-### API Integration Template
+### 外部 API 集成
 
 ```yaml
-# For integrating with external API
 tasks:
   - id: TASK-001
-    title: "Research external API and auth strategy"
+    title: "研究外部 API 和认证方式"
     state: todo
     depends_on: []
     acceptance:
-      - "API documentation reviewed"
-      - "Authentication method determined"
-      - "Rate limits and constraints documented"
+      - "已阅读 API 文档"
+      - "认证方式已确定"
+      - "速率限制和约束已记录"
     risk: high
-    files_hint: [".autopilot/decision-log.md"]
+    files_hint: [".hepha/decision-log.md"]
 
   - id: TASK-002
-    title: "Set up API client and authentication"
+    title: "设置 API client 和认证"
     state: todo
     depends_on: [TASK-001]
     acceptance:
-      - "API client configured"
-      - "Authentication flow working"
-      - "Error handling implemented"
+      - "API client 已配置"
+      - "认证流程可用"
+      - "错误处理已实现"
     risk: medium
     files_hint: ["src/api/externalClient.ts"]
 
   - id: TASK-003
-    title: "Implement core API integration endpoints"
+    title: "实现核心 API 集成逻辑"
     state: todo
     depends_on: [TASK-002]
     acceptance:
-      - "Required endpoints called successfully"
-      - "Data transformation layer exists"
-      - "Caching strategy if needed"
+      - "必需端点可成功调用"
+      - "存在数据转换层"
+      - "如需要，缓存策略已实现"
     risk: medium
     files_hint: ["src/api/externalService.ts"]
 
   - id: TASK-004
-    title: "Build UI for external data display"
+    title: "构建外部数据展示 UI"
     state: todo
     depends_on: [TASK-003]
     acceptance:
-      - "External data renders in UI"
-      - "Loading states handled"
-      - "Error states displayed"
+      - "外部数据可在 UI 中展示"
+      - "加载态已处理"
+      - "错误态已展示"
     risk: low
     files_hint: ["src/components/ExternalData.tsx"]
 ```
 
-## Task Splitting Rules
+## 继续拆分的信号
 
-### When to Split Further
+出现任一情况都应继续拆分：
 
-A task needs splitting if ANY of these apply:
+1. **过大**：预计超过一轮或约 2 小时。
+2. **验收模糊**：无法写出可测试条件。
+3. **关注点混杂**：触碰超过 3 个主要模块。
+4. **隐藏依赖**：内部子步骤有独立依赖关系。
+5. **高风险单点**：一个任务阻塞大量后续任务。
 
-1. **Too large**: Estimated effort > 2 hours
-2. **Vague acceptance**: Cannot write testable pass conditions
-3. **Mixed concerns**: Touches >3 major modules
-4. **Hidden dependencies**: Contains sub-steps with their own dependencies
-5. **High risk single point**: Single task blocks many others
+## 拆分启发
 
-### Splitting Heuristics
-
-```
-Original: "Build full e-commerce checkout"
-→ Split into:
-   - TASK-001: Create checkout data model
-   - TASK-002: Implement checkout API
-   - TASK-003: Build shipping address form
-   - TASK-004: Build payment form
-   - TASK-005: Implement order confirmation flow
+```text
+原始需求："构建完整电商 checkout"
+-> TASK-001：创建 checkout 数据模型
+-> TASK-002：实现 checkout API
+-> TASK-003：构建收货地址表单
+-> TASK-004：构建支付表单
+-> TASK-005：实现订单确认流程
 ```
 
-## Anti-Patterns to Avoid
+## 反模式
 
-### Don't split by file
-```
-❌ Bad:
-   - TASK-001: Write auth.ts
-   - TASK-002: Write user.ts
-   - TASK-003: Write database.ts
+### 不要按文件拆
 
-✅ Good:
-   - TASK-001: Implement user registration
-   - TASK-002: Implement user login
-   - TASK-003: Implement password reset
-```
+```text
+错误：
+   - TASK-001：写 auth.ts
+   - TASK-002：写 user.ts
+   - TASK-003：写 database.ts
 
-### Don't split by layer
-```
-❌ Bad:
-   - TASK-001: Write all database queries
-   - TASK-002: Write all API endpoints
-   - TASK-003: Write all UI components
-
-✅ Good:
-   - TASK-001: Implement user profile feature (DB + API + UI)
-   - TASK-002: Implement settings feature (DB + API + UI)
+正确：
+   - TASK-001：实现用户注册
+   - TASK-002：实现用户登录
+   - TASK-003：实现密码重置
 ```
 
-### Don't create artificial dependencies
-```
-❌ Bad:
-   - TASK-001: Setup project structure
-   - TASK-002: Create utils folder (depends on TASK-001)
-   - TASK-003: Create components folder (depends on TASK-002)
+### 不要按技术层拆
 
-✅ Good:
-   - TASK-001: Implement feature A
-   - TASK-002: Implement feature B (truly independent)
+```text
+错误：
+   - TASK-001：写所有数据库查询
+   - TASK-002：写所有 API
+   - TASK-003：写所有 UI
+
+正确：
+   - TASK-001：实现用户资料能力（DB + API + UI）
+   - TASK-002：实现设置能力（DB + API + UI）
+```
+
+### 不要制造虚假依赖
+
+```text
+错误：
+   - TASK-001：创建项目结构
+   - TASK-002：创建 utils 目录（依赖 TASK-001）
+   - TASK-003：创建 components 目录（依赖 TASK-002）
+
+正确：
+   - TASK-001：实现功能 A
+   - TASK-002：实现功能 B（真正独立）
 ```

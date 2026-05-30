@@ -1,94 +1,96 @@
-# Planning Task Decomposition
+# 任务拆解指南
 
-## Planning Objective
+## 目标
 
-Convert a large requirement into a dependency-aware queue of smallest executable tasks.
+把一个大需求转换成带依赖关系的最小可执行任务队列。每个任务都应该能独立验证、独立沉淀 summary，并尽量独立提交。
 
-## Task Schema
+## 任务 Schema
 
-For each task, define:
+每个任务必须包含：
 
-- `id`: stable identifier
-- `title`: clear action statement
-- `state`: `todo | doing | blocked | done`
-- `depends_on`: list of task IDs
-- `acceptance`: testable pass conditions
-- `risk`: `low | medium | high`
-- `files_hint`: expected files/modules
+- `id`：稳定唯一标识，格式 `TASK-XXX`
+- `title`：中文动作句
+- `state`：`todo | doing | blocked | done`
+- `depends_on`：依赖任务 ID 数组
+- `acceptance`：可测试验收条件
+- `risk`：`low | medium | high`
+- `files_hint`：预计影响文件或模块
 
-### YAML Format Example
+### YAML 示例
 
 ```yaml
-# .autopilot/backlog.md example
+# .hepha/backlog.md 示例
 tasks:
   - id: TASK-001
-    title: "Create user authentication API endpoint"
+    title: "实现用户登录 API"
     state: todo
     depends_on: []
     acceptance:
-      - "POST /api/auth/login returns JWT token on valid credentials"
-      - "Returns 401 on invalid credentials"
+      - "POST /api/auth/login 在凭据正确时返回 JWT"
+      - "凭据错误时返回 401"
     risk: medium
     files_hint:
       - "src/api/auth.ts"
       - "src/middleware/auth.ts"
 
   - id: TASK-002
-    title: "Implement login form UI"
+    title: "实现登录表单"
     state: todo
     depends_on: [TASK-001]
     acceptance:
-      - "Login form renders with email and password fields"
-      - "Form submits to /api/auth/login"
-      - "Stores JWT token in localStorage on success"
+      - "页面展示邮箱和密码输入框"
+      - "提交时调用 /api/auth/login"
+      - "登录成功后保存 token"
     risk: low
     files_hint:
       - "src/components/LoginForm.tsx"
 ```
 
-### Validation Checklist
+## 校验清单
 
-Before executing any task, verify:
+执行任务前必须确认：
 
-- [ ] All tasks have unique `id` values
-- [ ] All `state` values are valid (todo|doing|blocked|done)
-- [ ] All `depends_on` reference existing task IDs
-- [ ] No circular dependencies exist (A depends on B, B depends on A)
-- [ ] All `acceptance` criteria are testable
-- [ ] All `risk` values are valid (low|medium|high)
-- [ ] At least one task is in ready state (todo + all dependencies satisfied)
+- [ ] 所有任务 ID 唯一。
+- [ ] 所有 `state` 值合法。
+- [ ] 所有 `depends_on` 引用真实任务。
+- [ ] 不存在循环依赖。
+- [ ] 所有 `acceptance` 都可验证。
+- [ ] 所有 `risk` 值合法。
+- [ ] 至少存在一个 ready 任务。
 
-## Decomposition Rules
+## 拆解规则
 
-1. Prefer vertical slices that can be tested and committed independently.
-2. Avoid tasks that touch too many unrelated modules.
-3. If acceptance is vague, split further.
-4. If estimate exceeds one loop, split further.
+1. 优先按用户可感知价值做垂直切片。
+2. 高风险和不确定性优先前置。
+3. 避免一个任务触碰多个无关模块。
+4. 验收条件模糊时继续拆分。
+5. 预计超过一轮时继续拆分。
 
-## Ready Queue Policy
+## Ready Queue 规则
 
-A task enters ready queue only if:
+任务进入 ready queue 的条件：
 
-- state is `todo`
-- all `depends_on` tasks are `done`
+- `state` 是 `todo`
+- 所有 `depends_on` 任务都是 `done`
 
-Priority suggestion:
+优先级：
 
-1. high-risk enablers first
-2. foundation tasks before feature polish
-3. user-visible value early when safe
+1. 高风险前置任务
+2. 能解锁后续任务的基础任务
+3. 能尽早形成用户可见价值的任务
 
-## Re-Planning Triggers
+## 重新规划触发器
 
-Re-plan immediately if:
+出现以下情况立即重新规划：
 
-- discovered technical constraint invalidates current path
-- repeated failures indicate wrong abstraction
-- hidden dependency appears
+- 新发现的技术约束推翻当前路径。
+- 连续失败说明抽象或方案错误。
+- 出现隐藏依赖。
+- 当前任务不能在一轮内合理完成。
 
-## Re-Planning Actions
+## 重新规划动作
 
-1. Pause current task and mark `blocked` with reason.
-2. Add new prerequisite tasks.
-3. Recompute ready queue.
-4. Continue loop with next ready task.
+1. 暂停当前任务并标记 `blocked`，写明原因。
+2. 增加新的前置任务或拆分子任务。
+3. 重新计算 ready queue。
+4. 继续执行下一个 ready 任务。

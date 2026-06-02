@@ -95,6 +95,10 @@ node ~/.claude/skills/hepha/scripts/hepha-server.js --root . --port 3000
 
 ## 工作原理
 
+<p align="center">
+  <img src="hepha-workflow.png" alt="Hepha AI 编码工作流系统" width="800" />
+</p>
+
 ```mermaid
 flowchart LR
     U[用户需求] --> S[技能引擎]

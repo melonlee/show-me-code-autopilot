@@ -95,6 +95,10 @@ That's it. Hepha will:
 
 ## How It Works
 
+<p align="center">
+  <img src="hepha-workflow.png" alt="Hepha AI Coding Workflow System" width="800" />
+</p>
+
 ```mermaid
 flowchart LR
     U[User Requirement] --> S[Skill Engine]

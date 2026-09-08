@@ -1,298 +1,227 @@
 ---
 name: hepha
-description: 启动 Hepha 自主迭代交付模式。用于用户明确要求 hepha、autopilot、自主循环、小步提交、持续 plan -> research -> execute -> check -> review -> summary -> commit、技术选型研究、本地 Hepha summary 服务或 Claude Code 风格任务看板时。
-context: fork
-agent: Explore
+description: 以中文优先的 Spec、TDD、角色隔离审查和个人 Wiki 沉淀来持续交付代码。仅在用户明确要求 Hepha、autopilot、自主循环、小步持续提交、个人工程 Wiki、任务可视化或无人值守迭代时使用；普通单次编码请求不要隐式启用。
 ---
 
 # Hepha
 
-## 核心定位
+把大需求转换为可验证、可审查、可追溯、可复用的连续交付循环：
 
-Hepha 是一个中文优先的工程交付 skill。它把大需求拆成可验证、可提交、可复盘的小任务，并按固定循环推进：
+`澄清 -> Spec -> 计划 -> 研究 -> TDD 执行 -> 双审查 -> 沉淀 -> 批准 -> 提交`
 
-`计划 -> 研究 -> 执行 -> 检查 -> 审查 -> 沉淀 -> 提交`
+把 Markdown 作为人类阅读层，把 JSON 作为机器事实源。不要通过修改 Markdown 绕过机器门禁。
 
-Superpowers 的关键启发是：skill 不只是提示词，而是强制执行的软件工程纪律。Hepha 保留这种纪律，但把重点放在中文协作、每轮任务沉淀、本地可视化 review 和连续交付。
+## 开始前
 
-## 激活条件
+1. 定位项目根目录和项目级指令。
+2. 检查工作树，保护用户已有改动。
+3. 确认用户授权的提交模式；默认使用人工批准。
+4. 初始化运行目录：
 
-仅当用户明确要求以下任一内容时启用：
+```bash
+node <skill-root>/scripts/hepha-cli.js init --root . --requirement "<需求>"
+```
 
-- hepha / autopilot / 自主循环 / 无人值守迭代
-- 小步执行并持续提交，直到 backlog 完成
-- 使用 Hepha 的本地 summary 页面或任务看板
-- 对 UI/交互变更执行浏览器验证并沉淀证据
+5. 读取以下参考文件：
 
-未明确要求 Hepha 时，不要强行套用本 skill。
+- 规划或修改任务时，读取 `references/runtime-schema.md`。
+- 执行代码任务时，读取 `references/spec-tdd-sdd.md`。
+- 生成或发布个人资产时，读取 `references/personal-wiki.md`。
+- 选择检查门禁时，读取 `references/validation_quality-gates.md`。
 
-## 语言规则
+## 运行时事实源
 
-- 与用户沟通、任务标题、验收条件、进度记录、summary 文件默认使用中文。
-- 代码标识符、命令、错误输出、第三方 API 名称保持项目原文。
-- 引用英文资料时，用中文总结结论；必要的链接和短引用保留原文。
-
-## 不可违反的规则
-
-1. 一轮只处理一个最小可交付子任务。
-2. 没有明确验收条件，不进入执行。
-3. 涉及代码行为时，优先测试先行；无法测试时必须记录原因和替代验证。
-4. 检查和审查未通过，不提交。
-5. 每轮结束必须生成中文 summary Markdown。
-6. UI 或流程变更必须做浏览器/Playwright/MCP 验证，并记录证据。
-7. 只改当前任务需要的文件，避免顺手重构。
-
-## 运行时目录
-
-在当前项目根目录创建并维护 `.hepha/`：
+维护以下结构：
 
 ```text
 .hepha/
+├── manifest.json
+├── backlog.json
 ├── backlog.md
 ├── progress.md
 ├── decision-log.md
-└── summary/
-    └── YYYY-MM-DD/
-        └── person-slug/
-            └── TASK-XXX.md
+├── specs/
+├── evidence/
+├── summary/YYYY-MM-DD/<person>/
+└── wiki/
+    ├── candidates/
+    ├── assets/
+    └── index.json
 ```
 
-模板位于本 skill 的 `templates/`：
+- `manifest.json`：需求、负责人、提交策略和 Schema 版本。
+- `backlog.json`：任务、依赖、验收条件和状态的机器事实源。
+- `evidence/TASK-XXX.json`：TDD、检查、浏览器和审查证据。
+- `summary/`：一次任务的事实记录。
+- `wiki/`：跨任务复用的长期个人资产。
 
-- `templates/backlog.md`
-- `templates/progress.md`
-- `templates/decision-log.md`
-- `templates/task-summary.md`
+## 规格与任务图
 
-如果运行时文件不存在，先按模板创建。
+先写 Spec，再拆任务。Spec 至少包含：目标、非目标、约束、行为场景、边界条件和需求级完成条件。
 
-## 人物目录规则
+每个行为场景使用稳定 ID。每个任务必须引用 Spec，并包含：
 
-每轮 summary 的目录必须是：
+- `id`、`title`、`state`
+- `depends_on`、`risk`、`files_hint`
+- Given/When/Then 形式的 `acceptance`
+- `spec_refs`
+- `behavior_change`
+- 行为变更对应的 `test_plan.commands`
+- `knowledge.asset_policy`
 
-`.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md`
-
-`person` 的取值顺序：
-
-1. 用户本轮明确指定的人物、操作者或 reviewer 名称
-2. 环境变量 `HEPHA_PERSON`
-3. `git config user.name`
-4. 当前系统用户名
-5. `unknown`
-
-将人物名转为 slug：小写、空格转 `-`、删除不适合作为路径的字符。日期使用本地日期 `YYYY-MM-DD`。
-
-## 每轮 Summary 内容
-
-每轮结束都写一个独立 Markdown，供人和 AI review。必须包含：
-
-- YAML frontmatter：task_id、title、date、person、state、risk、commit
-- 任务目标和验收标准
-- 本轮执行摘要
-- 修改文件
-- 检查命令与结果
-- 浏览器/人工审查结果
-- 技术决策和资料链接
-- 风险、阻塞和后续建议
-- AI reviewer 快速判断区
-
-完成 summary 后，同步更新 `.hepha/progress.md` 的循环历史。
-
-## 本地 Hepha 服务
-
-安装 skill 后，可在任意项目根目录运行：
+编辑 `.hepha/backlog.json` 后执行：
 
 ```bash
-node ~/.claude/skills/hepha/scripts/hepha-server.js --root . --port 3000
+node <skill-root>/scripts/hepha-cli.js validate --root .
 ```
 
-如果 skill 安装在其他位置，从对应 skill 目录运行：
+校验失败时不要进入执行。
 
-```bash
-node /path/to/hepha/scripts/hepha-server.js --root /path/to/project --port 3000
-```
+任务进入 `doing` 时 CLI 会固化契约指纹。执行期间不得静默修改验收条件、测试计划或资产策略来绕过门禁；必须阻塞并显式重新规划。
 
-打开 `http://localhost:3000` 查看 `.hepha/summary` 下的日期、人物、任务列表和具体 Markdown 内容。页面使用 Claude Code 风格的深色背景、暖色强调和紧凑信息布局。
+## 每轮协议
 
-## 循环协议
-
-### 0. 准备
-
-1. 确认 `.hepha/` 目录和模板文件存在。
-2. 若 backlog 为空，从用户需求生成任务图。
-3. 若本轮需要本地页面，提示或启动 `hepha-server.js`。
+一次只选择一个 ready 任务。优先处理高风险、能解锁后续任务或能尽早产生用户价值的任务。
 
 ### 1. 计划
 
-目标：选择一个 ready 任务。
+明确本轮 Spec、验收条件、允许修改的文件、测试命令、风险和预期资产。将任务转换为 `doing`：
 
-每个任务必须包含：
-
-- `id`：`TASK-XXX`
-- `title`：中文动作句
-- `state`：`todo | doing | blocked | done`
-- `depends_on`：依赖任务数组，可为空
-- `acceptance`：可测试验收条件
-- `risk`：`low | medium | high`
-- `files_hint`：预计影响文件
-
-计划阶段要检查：
-
-- ID 唯一
-- 依赖存在且无环
-- 至少有一个 ready 任务
-- 验收条件可验证
-
-优先级：
-
-1. 高风险前置任务
-2. 会解锁其他任务的基础任务
-3. 能尽早产生用户可见价值的任务
+```bash
+node <skill-root>/scripts/hepha-cli.js transition --root . --task TASK-XXX --to doing
+```
 
 ### 2. 研究
 
-仅在以下情况强制研究：
+仅在引入新工具、改变架构、存在明显多方案或涉及安全/迁移等高风险判断时研究。至少比较两个方案，把证据和取舍写入 `decision-log.md`。
 
-- 引入项目中没有的新库、框架或工具
-- 改变模块边界、数据流或部署方式
-- 存在两个以上可行方案且差异明显
-- 涉及安全、鉴权、支付、数据迁移等高风险决策
+### 3. TDD 执行
 
-研究要求：
+对行为变更强制执行 RED、GREEN、REFACTOR：
 
-1. 至少比较两个方案。
-2. 优先官方文档、源码、项目内既有模式。
-3. 在 `.hepha/decision-log.md` 记录：背景、选项、证据、取舍、决定。
+1. 写最小失败测试。
+2. 执行并记录 RED；测试必须因缺少目标行为而失败。
+3. 写使测试通过的最小实现。
+4. 执行并记录 GREEN。
+5. 重构后运行相关回归测试并记录 regression。
 
-普通 CRUD、明确 bug 修复、样式微调不需要额外研究。
+使用 CLI 执行并记录证据：
 
-### 3. 执行
+```bash
+node <skill-root>/scripts/hepha-cli.js record-check --root . --task TASK-XXX --phase red --command "<测试命令>"
+node <skill-root>/scripts/hepha-cli.js record-check --root . --task TASK-XXX --phase green --command "<测试命令>"
+node <skill-root>/scripts/hepha-cli.js record-check --root . --task TASK-XXX --phase regression --command "<回归命令>"
+```
 
-目标：以最小影响范围完成选定任务。
+非行为任务将 `behavior_change` 设为 `false`，并在 summary 记录替代验证。不要虚构 RED 证据。
 
-- 遵循项目现有架构和代码风格。
-- 不做无关重构。
-- 任务变大时立即拆分，不硬做。
-- 写必要测试；若不写测试，必须在 summary 里说明原因。
+### 4. 角色隔离审查
 
-### 4. 检查
+宿主允许且用户授权子代理时，给实现者、Spec reviewer 和 code reviewer 使用独立上下文。只传递当前 Spec、任务、变更、测试和相关文件，不传递预设结论。
 
-运行与改动相关的检查，例如：
+宿主不允许子代理时，执行两次独立审查遍历：
 
-- lint
-- unit/integration tests
-- build/typecheck
+1. Spec review：逐条验证场景和验收条件，不讨论代码美观。
+2. Code review：检查正确性、安全性、可维护性、测试质量和无关改动。
 
-失败时：
+记录结果：
 
-1. 将失败命令和关键信息写入 `.hepha/progress.md`。
-2. 修根因。
-3. 重新运行检查。
-4. 同一任务连续失败两次，触发重新规划或停止。
+```bash
+node <skill-root>/scripts/hepha-cli.js record-review --root . --task TASK-XXX --type spec --status passed --reviewer "<name>"
+node <skill-root>/scripts/hepha-cli.js record-review --root . --task TASK-XXX --type code --status passed --reviewer "<name>"
+```
 
-### 5. 审查
+UI 或交互变更必须执行浏览器验证并把命令或步骤记录到 evidence 和 summary。
 
-目标：确认结果符合用户视角和工程质量。
+### 5. 沉淀
 
-必须审查：
+先写任务 summary，再判断是否形成长期资产：
 
-- 是否满足选定任务的验收条件
-- 是否存在无关改动
-- 是否破坏既有路径
-- UI/交互变更是否通过浏览器验证
+- Summary 回答“这次做了什么、如何证明”。
+- Wiki 资产回答“以后可以复用什么、适用和不适用在哪里”。
 
-UI/流程变更的证据包括：
+根据 `knowledge.asset_policy`：
 
-- 访问的页面或路由
-- 执行的关键交互
-- 观察到的结果
-- 截图、快照或控制台信息（如适用）
+- `none`：不生成资产。
+- `candidate`：写入 `.hepha/wiki/candidates/`。
+- `required`：必须审核并发布到 `.hepha/wiki/assets/`。
 
-### 6. 沉淀
+发布资产：
 
-在 `.hepha/summary/YYYY-MM-DD/<person>/TASK-XXX.md` 写入本轮 summary。
+```bash
+node <skill-root>/scripts/hepha-cli.js publish-asset --root . --file .hepha/wiki/candidates/PAT-001.md --reviewer "<name>"
+```
 
-同时更新：
+资产必须关联来源 Spec、Task、Test 和 Commit；发布前删除密钥、个人信息和项目敏感内容。本轮提交尚未产生时使用 `source_commits: [self]`，表示包含该资产的提交；禁止使用 `pending`。
 
-- `.hepha/progress.md`
-- `.hepha/backlog.md`
-- `.hepha/decision-log.md`（如本轮有研究或架构判断）
+把已发布、非机密资产同步到跨项目个人 Wiki：
 
-summary 是下一轮、人类 review、本地页面和 AI review 的共同输入。
+```bash
+node <skill-root>/scripts/hepha-cli.js sync-personal --root .
+```
 
-### 7. 提交
+同步后的 `~/.hepha/wiki/index.json` 是个人资产数据层，包含资产记录、项目来源、四类来源谱系以及按状态/类型/项目/标签聚合的指标。它用于跨项目检索和复盘，不替代资产正文。
 
-提交条件：
+### 6. 完成与提交
 
-- 检查通过
-- 审查通过
-- 验收条件满足
-- summary 已生成
+完成 TDD 后进入 `review`。写完 summary、资产候选并通过审查后，记录人工批准：
 
-提交规则：
+```bash
+node <skill-root>/scripts/hepha-cli.js transition --root . --task TASK-XXX --to review
+node <skill-root>/scripts/hepha-cli.js record-review --root . --task TASK-XXX --type human --status passed --reviewer "<owner>"
+node <skill-root>/scripts/hepha-cli.js transition --root . --task TASK-XXX --to done
+```
 
-- 一个 loop 对应一个最小提交。
-- 使用 conventional commit。
-- 提交信息说明目的，不只描述改了什么。
-- 不提交密钥或敏感凭据。
+只有 `manifest.json` 明确设置 `approval_required: false` 时，才允许无人值守完成。提交前确认：
 
-## 重新规划
+- Spec、测试、回归和审查全部通过。
+- 没有无关改动或敏感信息。
+- summary 和 Wiki 策略满足。
+- `.hepha` 索引已刷新。
 
-出现以下情况时重新规划：
+一个任务对应一个最小 conventional commit。资产使用 `self` 避免提交哈希自引用；同步到个人 Wiki 时 CLI 会把它解析成真实 hash。提交后重新构建索引并同步个人 Wiki：
 
-- 发现隐藏依赖
-- 当前任务超过一轮合理范围
-- 检查/审查连续失败
-- 用户需求与当前任务图不一致
+```bash
+node <skill-root>/scripts/hepha-cli.js build-index --root .
+node <skill-root>/scripts/hepha-cli.js sync-personal --root .
+```
 
-处理方式：
+## 状态机
 
-1. 将当前任务标记为 `blocked` 或拆成更小任务。
-2. 记录阻塞原因。
-3. 更新依赖关系。
-4. 继续下一个 ready 任务。
+只允许：
 
-## 停止条件
+```text
+todo -> doing | blocked | skipped
+doing -> review | blocked
+review -> doing | done | blocked
+blocked -> todo | doing | skipped
+```
 
-满足任一条件时停止并报告：
+`done` 和 `skipped` 是终态。跳过任务必须记录原因，并重新验证需求级完成条件。
 
-1. 没有 ready 任务且存在未解决阻塞。
-2. 同一任务连续两次检查或审查失败。
-3. 必需工具不可用，且无法替代验证。
-4. 继续执行会越过用户给定风险边界。
+## 失败与重新规划
 
-报告必须包含：
+第一次失败：诊断根因并重试。第二次相同失败：暂停当前实现、检查 Spec 和任务边界并重新规划。只有不存在可信替代路径时才阻塞并报告。
 
-- 当前完成状态
-- 阻塞根因
-- 已尝试动作
-- 建议下一步
+发现隐藏依赖、任务范围扩大、需求冲突或验证不充分时，更新 Spec 和任务图，不要硬做。
+
+## 本地可视化
+
+启动只读 Review/Wiki 服务：
+
+```bash
+node <skill-root>/scripts/hepha-server.js --root . --port 3000
+```
+
+检查任务时间线、任务详情中的 TDD/审查证据、个人资产、候选队列、全文搜索和 Spec → Task → Test → Commit 谱系。页面不是机器事实源；页面展示缺失时回查对应 JSON 和 Markdown 产物。
 
 ## 完成条件
 
-只有同时满足以下条件，才认为大需求完成：
+仅在以下条件全部满足时报告需求完成：
 
-1. backlog 全部任务为 `done` 或明确跳过并说明原因。
-2. 需求级 definition of done 满足。
-3. 最终相关检查通过。
-4. summary 和审查证据完整。
-5. 本地 Hepha 页面能展示本次任务沉淀。
-
-## 推荐启动提示
-
-```text
-启用 hepha 模式。
-请使用中文记录所有任务、验收、进度和 summary。
-运行循环：计划 -> 研究 -> 执行 -> 检查 -> 审查 -> 沉淀 -> 提交。
-每轮在 .hepha/summary/YYYY-MM-DD/<person>/ 下生成 TASK-XXX.md。
-如涉及 UI，请做浏览器验证。
-持续直到 backlog 完成或触发停止条件。
-需求：<粘贴需求>
-```
-
-## 参考资料
-
-- 任务拆解：`references/planning_task-decomposition.md`
-- 拆解模式：`references/decomposition-patterns.md`
-- 质量门禁：`references/validation_quality-gates.md`
-- 进度格式：`references/progress-template.md`
+1. backlog 所有任务为 `done` 或有理由的 `skipped`。
+2. 需求级 Spec 完成条件满足。
+3. 最终相关测试、lint、构建和浏览器验证通过。
+4. Spec/code/human review 证据完整。
+5. Summary、个人资产和索引完整可读。
+6. 本地页面能检索并展示本次交付谱系。

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Hepha"
+  short_description: "以 Spec、TDD、审查和个人 Wiki 持续交付代码"
+  default_prompt: "使用 $hepha 将这个需求拆成可验证任务，并通过 TDD、双审查和个人 Wiki 沉淀持续交付。"
+
+policy:
+  allow_implicit_invocation: false

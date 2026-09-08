@@ -1,0 +1,31 @@
+{
+  "schema_version": "2.0",
+  "requirement": "[一句话需求]",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "[中文动作句]",
+      "state": "todo",
+      "depends_on": [],
+      "acceptance": [
+        {
+          "id": "AC-001",
+          "given": "[前置条件]",
+          "when": "[动作]",
+          "then": "[可观察结果]"
+        }
+      ],
+      "risk": "low",
+      "files_hint": ["[path]"],
+      "spec_refs": ["SPEC-001"],
+      "behavior_change": true,
+      "test_plan": {
+        "commands": ["[test command]"]
+      },
+      "knowledge": {
+        "asset_policy": "candidate",
+        "candidate_types": ["pattern"]
+      }
+    }
+  ]
+}
